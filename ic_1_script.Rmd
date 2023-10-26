@@ -4,11 +4,11 @@ output:
   html_document:
 date: "2023-10-19"
 ---
-  mudeiiiii
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = F, message = F)
 ```
+# Análise descritiva
 
 ## CARREGAMENTO DAS BIBLIOTECAS
 
@@ -26,7 +26,6 @@ library(knitr)        ### aparência de tabelas
 library(kableExtra)   ### aparência de tabelas
 library(git4r)
 ```
-# Análise descritiva
 
 ## Carregamentoe limpeza da base, e criação do dicionário
 
