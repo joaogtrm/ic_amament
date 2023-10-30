@@ -64,11 +64,11 @@ var_fct_num <- c(
   "ig_inclus_corrigida_35",
   "religiao_catolica_sn",
   "salario_familiar_cat", "salario_familiar_2cat",
-  "idade_faixa_et"
+  "idade_faixa_et","escolaridade_cat"
 )
 ###variaveis de fator cahracter
 var_fct_chr <- c(
-  "mamilos", "tipo_parto", "escolaridade_cat", "sexo"
+  "mamilos", "tipo_parto", "sexo"
 )
 ###variaveis numéricas
 var_num <- c(
@@ -76,10 +76,11 @@ var_num <- c(
   "dias_int_mae_pos_parto", "ig_parto", "num_filhos_amamentou_todos","media_amament_prev_meses_todos",
   "peso_nasc", "uti_t_int_todos", "total_t_int", "ganho_peso_por_dia", "tempo"
 )
-### variaveis de fatores representados por números
+### usando dicionário para variaveis de fatores representados por números
 var_fct <- c(var_fct_num,var_sn_10)
-### arrumando a classe dos fatores
 dados_2[,var_fct] <- lapply(dados_2[,var_fct], as_factor)
+### vetor com todas variáveis de fatores
+var_fct <- c(var_fct_chr,var_fct_num,var_sn_10,var_sn)
 ###limpando a base, removendo os dois valores perdidos durante acompanhamento
 df_geral <- dados_2
 df_geral <- df_geral %>% 
