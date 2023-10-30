@@ -4,10 +4,16 @@ output:
   html_document:
 date: "2023-10-19"
 ---
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE
+)
 knitr::opts_chunk$set(warning = F, message = F)
 ```
+
 # Análise descritiva
 
 ## CARREGAMENTO DAS BIBLIOTECAS
@@ -29,7 +35,7 @@ library(git4r)
 
 ## Carregamento, limpeza da base, e criação do dicionário
 
-```{r}
+```{r include=FALSE}
 ## importação da base de dados+clean_names()
 dados_2 <- read_sav("dados-amamentacao.sav") %>% clean_names()
 ### gerando dicionário
@@ -80,14 +86,17 @@ var_num <- c(
 var_fct <- c(var_fct_num,var_sn_10)
 dados_2[,var_fct] <- lapply(dados_2[,var_fct], as_factor)
 ### vetor com todas variáveis de fatores
-var_fct <- c(var_fct_chr,var_fct_num,var_sn_10,var_sn)
+var_fct <-c(var_fct_chr,var_fct_num,var_sn_10,var_sn)
+dados_2[,var_fct] <- lapply(dados_2[,var_fct], as.factor)
 ###limpando a base, removendo os dois valores perdidos durante acompanhamento
 df_geral <- dados_2
 df_geral <- df_geral %>% 
   janitor::clean_names() %>%
   dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
   dplyr::filter(!is.na(censura)==TRUE) %>% 
-  dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180)
+  dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) 
+### removendo varaiveis que não serão mais usadas
+rm(var_fct_chr,var_fct_num,var_id,var_sn,var_sn_10)
 ```
 
 ## descritiva_mae
@@ -102,11 +111,10 @@ vet_mae <- setdiff(names(df_geral), vet_nao_mae)
 ```
 
 ### dados numéricos
-  
+
 ```{r}
 df_mae_num <- df_geral %>% 
   dplyr::filter(indic_mae==1) %>% 
-  #dplyr::select(setdiff(var_fct_num, vet_nao_mae))
   dplyr::select(var_num)
 med_var_mae <- data.frame(media=colMeans(df_mae_num, na.rm = TRUE), variancia=apply(df_mae_num, 2, var, na.rm = TRUE))
 med_var_mae %>% kbl() %>%kable_styling()
@@ -125,6 +133,44 @@ for (i in names(df_mae_fator)){
   b <- df_mae_fator[[i]]
   a[[i]] <- as.data.frame(table(b)) %>% kable(caption=nome_2) %>% kable_styling()
   print(a[[i]])
+}
+```
+
+# Análise de sobrevivência
+
+## separando variaveis de fator por numero de fatores 
+
+```{r}
+fatores_3 <- c("religiao_catolica_sn","salario_familiar_cat","mamilos","escolaridade_cat")
+fatores_4 <- c("idade_faixa_et")
+fatores_2 <- setdiff(var_fct, union(fatores_3, fatores_4))
+## algumas variaveis estavam dando problema na hora de gerar os gráficos, então as removi 
+problemas <- c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","amamen_exclusiva_sn","indic_t","indic_tempo","censura","tempo","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho","retorno_trabalho","filter")
+
+fatores_2 <- fatores_2[!(fatores_2%in%problemas)]
+```
+
+## para variáveis com 2 fatores 
+```{r}
+df_geral$censura <- as.numeric(df_geral$censura)
+v_imp <- list()
+v_imp_nome <- list()
+for (i in names(df_geral %>% select(fatores_2))){
+  lrv<- survdiff(Surv(df_geral$tempo,df_geral$censura)~df_geral[[i]])
+  if (lrv$pvalue<1){
+    v_imp_nome[i] <- i
+    v_imp[i] <- lrv
+    
+  }
+}
+```
+
+```{r results='asis'}
+ekm <- list()
+for (i in names(v_imp_nome)){
+  ekm[[i]] <- survfit(Surv(df_geral$tempo,df_geral$censura)~df_geral[[i]])
+  plot <- autoplot(ekm[[i]],main = paste("curva de Kaplan-Meier para ",i),surv.connect=F)
+  print(plot)
 }
 ```
 
