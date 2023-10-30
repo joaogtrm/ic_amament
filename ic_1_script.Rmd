@@ -27,7 +27,7 @@ library(kableExtra)   ### aparência de tabelas
 library(git4r)
 ```
 
-## Carregamentoe limpeza da base, e criação do dicionário
+## Carregamento, limpeza da base, e criação do dicionário
 
 ```{r}
 ## importação da base de dados+clean_names()
@@ -126,5 +126,4 @@ for (i in names(df_mae_fator)){
   print(a[[i]])
 }
 ```
-
 
