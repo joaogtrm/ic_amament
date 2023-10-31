@@ -1,22 +1,24 @@
 ---
-title: "ic_amamentação"
-output: 
+  title: "ic_amamentação"
+  output: 
   html_document:
-date: "2023-10-19"
+  date: "2023-10-19"
 ---
-
+  
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-	message = FALSE,
-	warning = FALSE,
-	include = TRUE
+  message = FALSE,
+  warning = FALSE,
+  include = TRUE
 )
 knitr::opts_chunk$set(warning = F, message = F)
 ```
 
 # Análise descritiva
 
-## CARREGAMENTO DAS BIBLIOTECAS
+## Carregamento da base e limpeza 
+
+### carregamento das bibliotecas
 
 ```{r, warning=F, message=F}
 library(tidyverse)    ### coleção de pacotes
@@ -25,35 +27,46 @@ library(haven)        ### ler o pacote .sav
 library(labelled)     ### obter o dicionário das variaveis  
 library(ggplot2)      ### construção de gráficos 
 library(survival)     ### análise de sobrevivência
-library(corrr)        ### talvez
+#library(corrr)        ### talvez
 library(ggfortify)    ### talvez
 library(summarytools) ### talvez
 library(knitr)        ### aparência de tabelas
 library(kableExtra)   ### aparência de tabelas
-library(git4r)
+library(RCurl)        ### importar base do github
 ```
 
-## Carregamento, limpeza da base, e criação do dicionário
+### Carregamento, limpeza da base, e criação do dicionário
 
 ```{r include=FALSE}
-## importação da base de dados+clean_names()
-dados_2 <- read_sav("dados-amamentacao.sav") %>% clean_names()
-### gerando dicionário
-dicionario <- dados_2 %>% 
+# importação da base de dados+clean_names()
+link <- ("https://github.com/joaogtrm/ic_amament/raw/main/dados-amamentacao.sav")
+df_geral <- read_sav(link) %>% clean_names()
+df_geral <- df_geral %>% 
+  janitor::clean_names() %>%
+  dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
+  dplyr::filter(!is.na(censura)==TRUE) %>% 
+  dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) 
+## gerando dicionário
+dicionario <- df_geral %>% 
   janitor::clean_names()%>% 
   labelled::generate_dictionary()
-## vetores com nomes das variaveis de cada tipo
-### variaveis de identificação
+# separando vetores por tipos 
+## vetor com tempos t1,t2,t3
+temp_n <- c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho")
+## variaveis de identificação
 var_id <- c("n_rand", "grupo", "indic_gemelar", "indic_mae", "indic_info_ganho_peso", "indic_t", "indic_tempo","filter")
-###variaveis de sim ou não string
-var_sn <- c(
-  "trabalha_sn", "mora_com_compan", "af_ca_mama", "orien_amam_prev",
-  "gravid_plan", "gravid_desej", "complic_relac_parto",
-  "uti", "amament_prev_sn",
-  "t1_retorno_ao_trabalho", "t2_retorno_trabalho", "t3_retorno_trabalho"
-)
-###variaveis de sim ou não numeric
-var_sn_10 <- c(
+## variaveis numéricas
+var_num <- c(
+  "ig_inclus_corrigida", "horas_trab_dia", "salario_familiar", "idade",
+  "dias_int_mae_pos_parto", "ig_parto", "num_filhos_amamentou_todos","media_amament_prev_meses_todos",
+  "peso_nasc", "uti_t_int_todos", "total_t_int", "ganho_peso_por_dia", "tempo","censura")
+## variaveis de fator
+#### variaveis de sim ou não numerico
+var_sn <- c("religiao_sn", "para_sn", "horas_trab_menor_igual7", "horas_trab_menor_7", "idade_menor26", "idade_menor_igual26", "dias_int_mae_pos_parto_menor_igual3", "dias_int_mae_pos_parto_menor3", "ig_parto_36", "ig_parto_37", "ajuda_para_cuidar", "dificuldade_para_amamentar", "dor_amamentar", "media_amament_prev_12", "peso_nasc_2300", "total_t_int_menor11", "ganho_peso_por_dia_menor_igual21", "amamen_exclusiva_sn", "censura", "retorno_trabalho", "trabalha_sn", "mora_com_compan", "af_ca_mama", "orien_amam_prev", "gravid_plan", "gravid_desej", "complic_relac_parto", "uti", "amament_prev_sn")
+#### variaveis de fator numerico
+var_fct_chr <- c("religiao_catolica_sn","salario_familiar_cat","salario_familiar_2cat","idade_faixa_et","escolaridade_cat","mamilos", "tipo_parto", "sexo")
+#### variaveis de sim ou não 
+var_sn_n <- c(
   "religiao_sn", "para_sn",
   "horas_trab_menor_igual7", "horas_trab_menor_7",
   "idade_menor26", "idade_menor_igual26",
@@ -65,72 +78,50 @@ var_sn_10 <- c(
   "t1_amamen_exclusiva_sn", "t2_amamen_exclusiva_sn", "t3_amamen_exclusiva_sn", "amamen_exclusiva_sn",
   "censura", "retorno_trabalho"
 )
-###variaveis de fator numeric
-var_fct_num <- c(
-  "ig_inclus_corrigida_35",
-  "religiao_catolica_sn",
-  "salario_familiar_cat", "salario_familiar_2cat",
-  "idade_faixa_et","escolaridade_cat"
+#### variaveis de fator numerico
+var_fct_chr_n <- c("religiao_catolica_sn","salario_familiar_cat", "salario_familiar_2cat","idade_faixa_et","escolaridade_cat"
 )
-###variaveis de fator cahracter
-var_fct_chr <- c(
-  "mamilos", "tipo_parto", "sexo"
-)
-###variaveis numéricas
-var_num <- c(
-  "ig_inclus_corrigida", "horas_trab_dia", "salario_familiar", "idade",
-  "dias_int_mae_pos_parto", "ig_parto", "num_filhos_amamentou_todos","media_amament_prev_meses_todos",
-  "peso_nasc", "uti_t_int_todos", "total_t_int", "ganho_peso_por_dia", "tempo"
-)
-
-### usando dicionário para variaveis de fatores representados por números
-var_fct <- c(var_fct_num,var_sn_10)
-dados_2[,var_fct] <- lapply(dados_2[,var_fct], as_factor)
-### vetor com todas variáveis de fatores
-var_fct <-c(var_fct_chr,var_fct_num,var_sn_10,var_sn)
-dados_2[,var_fct] <- lapply(dados_2[,var_fct], as.factor)
-###limpando a base, removendo os dois valores perdidos durante acompanhamento
-df_geral <- dados_2
-df_geral <- df_geral %>% 
-  janitor::clean_names() %>%
-  dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
-  dplyr::filter(!is.na(censura)==TRUE) %>% 
-  dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) 
-### removendo varaiveis que não serão mais usadas
-rm(var_fct_chr,var_fct_num,var_id,var_sn,var_sn_10)
+### mudando valores das variaveis de fator usando dicionário 
+var_fct_n <- union(var_fct_chr_n,var_sn_n)
+df_geral[,var_fct_n] <- lapply(df_geral[,var_fct_n], as_factor)
+# mudando classe das variaveis 
+## variaveis de fator 
+var_fct <-union(var_fct_chr,var_sn)
+df_geral[,var_fct] <- lapply(df_geral[,var_fct], as.factor)
+## variaveis numéricas
+df_geral[,var_num] <- lapply(df_geral[,var_num],as.integer)
+##limpando a base, removendo os dois valores perdidos durante acompanhamento
+#df_geral <- df_geral %>% 
+#  janitor::clean_names() %>%
+#  dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
+#  dplyr::filter(!is.na(censura)==TRUE) %>% 
+#  dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) 
 ```
 
-## descritiva_mae
+## descritiva dados maternos
 
 ```{r}
-## algumas variaveis estavam dando problema na hora de gerar os gráficos, então as removi 
-problemas <- c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","amamen_exclusiva_sn","indic_t","indic_tempo","censura","tempo","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho","retorno_trabalho","filter")
-var_fct <- setdiff(var_fct, problemas)
+## vetor com nomes dos dados que voltados a mãe
+vet_nao_mae <- c("n_rand", "grupo", "indic_gemelar", "indic_info_ganho_peso", "indic_t", "indic_tempo","filter","sexo","peso_nasc","peso_nasc_2300","uti","uti_t_int_todos","total_t_int", "total_t_int_menor11","ganho_peso_por_dia","ganho_peso_por_dia_menor_igual21")
+vet_mae <- setdiff(names(df_geral), c(vet_nao_mae))
+## duvidas: variaveis "uti",uti_t_int_todos" , "total_t_int", "total_t_int_menor11", são dos filhos, mas necessáriamente se um gêmeo foi internado, o outro também será? eu os retirei
 ```
 
-
-### vetor com nomes dos dados que voltados a mãe
-
-```{r}
-vet_nao_mae <- c("n_rand", "grupo", "indic_gemelar", "indic_info_ganho_peso", "indic_t", "indic_tempo","filter","sexo","peso_nasc","peso_nasc_2300","uti","uti_t_int_todos","total_t_int", "total_t_int_menor11","ganho_peso_por_dia","ganho_peso_por_dia_menor_igual21",problemas)
-vet_mae <- setdiff(names(df_geral), c(vet_nao_mae, problemas))
-## duvidas: "uti" é dos filhos, mas necessáriamente se um gêmeo foi internado, o outro também será? COLOQUEI NO VETOR PARA TIRAR
-#mesma duvida para variaveis "uti_t_int_todos" , "total_t_int", "total_t_int_menor11", 
-```
-
-### dados numéricos
+### dados numéricos maternos
 
 ```{r}
+#dados numéricos
 df_mae_num <- df_geral %>% 
   dplyr::filter(indic_mae==1) %>% 
   dplyr::select(intersect(var_num,vet_mae))
-med_var_mae <- data.frame(media=colMeans(df_mae_num, na.rm = TRUE), variancia=apply(df_mae_num, 2, var, na.rm = TRUE))
+med_var_mae <- data.frame(media=round(colMeans(df_mae_num, na.rm = TRUE),3), SD=round(sqrt(apply(df_mae_num, 2, var, na.rm = TRUE)),3))
 med_var_mae %>% kbl() %>%kable_styling()
 ```
 
-### dados de fatores
+### dados de fatores maternos 
 
 ```{r results='asis'}
+
 df_mae_fator <- df_geral %>% 
   dplyr::filter(indic_mae==1) %>% dplyr::select(c(intersect(vet_mae,var_fct)))
 a <- list()
@@ -138,73 +129,71 @@ for (i in names(df_mae_fator)){
   nome_2 <- "frequencia da variavel"
   nome_2 <- paste(nome_2, i)
   var <- df_mae_fator[[i]]
-  a[[i]] <- as.data.frame(table(var)) %>% mutate(pcnt=paste(round(Freq*100/180,2),"%")) %>% kable() %>% kable_styling()# adicionei o "pcnt", mas isso alterou o gráfico
+  a[[i]] <- as.data.frame(table(var)) %>% kable() %>% kable_styling()
   print(a[[i]])
 }
 ```
-## descritiva_bebê
 
-### dados numéricos
+## descritiva bebê
+
+### dados numéricos bebês
 
 ```{r}
 df_mae_num <- df_geral %>% 
-  dplyr::filter(indic_mae==1) %>% 
   dplyr::select(intersect(var_num,vet_nao_mae))
 med_var_mae <- data.frame(media=colMeans(df_mae_num, na.rm = TRUE), variancia=apply(df_mae_num, 2, var, na.rm = TRUE))
 med_var_mae %>% kbl() %>%kable_styling()
 ```
 
-### dados de fatores
+### dados de fatores bebês
 
 ```{r results='asis'}
-df_mae_fator <- df_geral %>% 
-  dplyr::filter(indic_mae==1) %>% dplyr::select(c(intersect(vet_nao_mae,var_fct)))
+df_mae_fator <- df_geral %>%
+  dplyr::select(c(intersect(vet_nao_mae,var_fct)))
 a <- list()
 for (i in names(df_mae_fator)){
   nome_2 <- "frequencia da variavel"
   nome_2 <- paste(nome_2, i)
   var <- df_mae_fator[[i]]
-  a[[i]] <- as.data.frame(table(var)) %>% kable(caption=nome_2) %>% kable_styling()
+  a[[i]] <- as.data.frame(table(var)) %>% kable() %>% kable_styling()
   print(a[[i]])
 }
 ```
 
-# Análise exploratória 
-```{r}
-sum(df_geral$horas_trab_dia>7.65)
-```
-
 # Análise de sobrevivência
-
-## separando variaveis de fator por numero de fatores 
-
 ```{r}
+# separando variaveis de fator por numero de fatores 
+df_geral <- df_geral %>% select(-temp_n)
 ## estava encontrando alguns problemas, então dividi as variáveis em relação ao número de fatores 
 fatores_3 <- c("religiao_catolica_sn","salario_familiar_cat","mamilos","escolaridade_cat")
 fatores_4 <- c("idade_faixa_et")
-fatores_2 <- c(setdiff(var_fct, union(union(fatores_3, fatores_4),problemas)))
+fatores_2 <- c(setdiff(intersect(names(df_geral),var_fct), union(fatores_3, fatores_4)))
 
 ```
 
-## para variáveis com 2 fatores 
+## para variáveis com 2 fatores
+
+### Tabela com todas variaveis com diferença significânte entre as curvas(pvalor), pelo teste de logrank, com seus respectivos pvalores ao lado 
+
 ```{r}
-df_geral$censura <- as.numeric(df_geral$censura)
+#df_geral$censura <- as.numeric(df_geral$censura)
 v_imp <- list()
 v_imp_nome <- list()
-lr_df <- as.data.frame(list()) |> mutate(variavel=NA,valor_p=NA)
+lr_df <- as.data.frame(list()) %>%  mutate(variavel=NA,valor_p=NA)
 for (i in names(df_geral %>% select(fatores_2))){
   lrv<- survdiff(Surv(df_geral$tempo,df_geral$censura)~df_geral[[i]])
-  if (lrv$pvalue<1){
+  if (lrv$pvalue<0.05){
     v_imp_nome[i] <- i
     v_imp[i] <- lrv
-    lr_df <- rbind(lr_df, data.frame(variável = i, valor_p = round(lrv$pvalue,3)))    
+    lr_df <- rbind(lr_df, data.frame(variavel = i, valor_p = round(lrv$pvalue,3)))    
     }
 }
-lr_df %>% kbl() %>%kable_styling()
-    
+lr_df %>% kbl() %>% kable_styling()
 ```
 
-```{r results='asis'}
+### curvas de kaplan-meier de cada variavel que apresentou pvalor significativo
+
+```{r eval=FALSE, include=FALSE, results='asis'}
 ekm <- list()
 for (i in names(v_imp_nome)){
   ekm[[i]] <- survfit(Surv(df_geral$tempo,df_geral$censura)~df_geral[[i]])
@@ -212,4 +201,3 @@ for (i in names(v_imp_nome)){
   print(plot)
 }
 ```
-
