@@ -45,27 +45,22 @@ df_geral <- df_geral %>%
   janitor::clean_names() %>%
   dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
   dplyr::filter(!is.na(censura)==TRUE) %>% 
-  dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) 
+  dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) %>% 
+  as_factor()
+# remoção de variáveis "parecidas", t1,t2,t3, e filter
+df_geral <- df_geral %>% select(-c("ig_inclus_corrigida_35","horas_trab_menor_igual7","horas_trab_menor_7","salario_familiar_cat","salario_familiar_2cat","idade_menor26","idade_faixa_et","dias_int_mae_pos_parto_menor_igual3","dias_int_mae_pos_parto_menor3","ig_parto_36","ig_parto_37","media_amament_prev_12","peso_nasc_2300","total_t_int_menor11","ganho_peso_por_dia_menor_igual21",c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho","filter", "indic_t", "indic_tempo"))) 
 ## gerando dicionário
 dicionario <- df_geral %>% 
-  janitor::clean_names()%>% 
   labelled::generate_dictionary()
 # separando vetores por tipos 
-## remoção das variaveis t1,t2,t3 e filter
-temp_n <- c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho","filter", "indic_t", "indic_tempo")
-df_geral <- df_geral %>% select(-temp_n)
 ## variaveis de identificação
 var_id <- c("n_rand", "grupo", "indic_gemelar", "indic_mae", "indic_info_ganho_peso")
 ## variaveis numéricas
-var_num <- c(
-  "ig_inclus_corrigida", "horas_trab_dia", "salario_familiar", "idade",
-  "dias_int_mae_pos_parto", "ig_parto", "num_filhos_amamentou_todos","media_amament_prev_meses_todos",
-  "peso_nasc", "uti_t_int_todos", "total_t_int", "ganho_peso_por_dia", "tempo","censura")
+var_num <- c("ig_inclus_corrigida", "horas_trab_dia","salario_familiar","idade","dias_int_mae_pos_parto","ig_parto","num_filhos_amamentou_todos","media_amament_prev_meses_todos","peso_nasc","uti_t_int_todos","total_t_int","ganho_peso_por_dia","tempo","censura")
 ## variaveis de fator
-var_fct <- setdiff(names(df_geral),union(var_num,var_id))
+var_fct <- setdiff(names(df_geral),var_num) %>% setdiff(var_id)
 # mudando classe das variaveis 
 ## variaveis de fator 
-df_geral[,var_fct] <- lapply(df_geral[,var_fct], as.factor)
 df_geral[,var_fct] <- lapply(df_geral[,var_fct], as.factor)
 ## variaveis numéricas
 df_geral[,var_num] <- lapply(df_geral[,var_num],as.integer)
