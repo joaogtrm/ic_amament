@@ -6,19 +6,16 @@
 ---
   
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  message = FALSE,
-  warning = FALSE,
-  include = TRUE
-)
 knitr::opts_chunk$set(warning = F, message = F)
 ```
 
-# Análise descritiva
+Esse documento apresentará uma análise descritiva, dos dados de 177 mães de gêmeos, e seus filhos, assim como a comparação de curvas de kaplan-Meier em relação ao tempo desde o nascimento até o início da introdução alimentar,com o limite de 180 dias, que é até quando a alimentação de um recém-nascido deve constituir apenas de leite materno.
 
-## Carregamento da base e limpeza 
+# Carregamento da base e limpeza 
 
-### carregamento das bibliotecas
+Importação da base de dados diretamente do meu github, assim como a limpeza, que envolve classificação correta das variáveis, e remoção de variaveis que não são de interesse. 
+
+## carregamento das bibliotecas
 
 ```{r, warning=F, message=F}
 library(tidyverse)    ### coleção de pacotes
@@ -33,28 +30,29 @@ library(summarytools) ### talvez
 library(knitr)        ### aparência de tabelas
 library(kableExtra)   ### aparência de tabelas
 library(RCurl)        ### importar base do github
+library(survminer)
 ```
 
-### Carregamento, limpeza da base, e criação do dicionário
+## Carregamento, limpeza da base, e criação do dicionário
 
 ```{r include=FALSE}
 # importação da base de dados+clean_names()
 link <- ("https://github.com/joaogtrm/ic_amament/raw/main/dados-amamentacao.sav")
-df_geral <- read_sav(link) %>% clean_names()
-df_geral <- df_geral %>% 
+df <- read_sav(link) 
+df <- df %>% 
   janitor::clean_names() %>%
   dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
   dplyr::filter(!is.na(censura)==TRUE) %>% 
   dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) %>% 
   as_factor()
 # remoção de variáveis "parecidas", t1,t2,t3, e filter
-df_geral <- df_geral %>% select(-c("ig_inclus_corrigida_35","horas_trab_menor_igual7","horas_trab_menor_7","salario_familiar_cat","salario_familiar_2cat","idade_menor26","idade_faixa_et","dias_int_mae_pos_parto_menor_igual3","dias_int_mae_pos_parto_menor3","ig_parto_36","ig_parto_37","media_amament_prev_12","peso_nasc_2300","total_t_int_menor11","ganho_peso_por_dia_menor_igual21",c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho","filter", "indic_t", "indic_tempo"))) 
+df_geral <- df %>% select(-c("ig_inclus_corrigida_35","horas_trab_menor_igual7","horas_trab_menor_7","salario_familiar_cat","salario_familiar_2cat","idade_menor26","idade_menor_igual26","idade_faixa_et","dias_int_mae_pos_parto_menor_igual3","dias_int_mae_pos_parto_menor3","ig_parto_36","ig_parto_37","media_amament_prev_12","peso_nasc_2300","total_t_int_menor11","ganho_peso_por_dia_menor_igual21",c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho","filter", "indic_t", "indic_tempo","indic_info_ganho_peso"))) 
 ## gerando dicionário
 dicionario <- df_geral %>% 
   labelled::generate_dictionary()
 # separando vetores por tipos 
 ## variaveis de identificação
-var_id <- c("n_rand", "grupo", "indic_gemelar", "indic_mae", "indic_info_ganho_peso")
+var_id <- c("n_rand", "grupo", "indic_gemelar", "indic_mae")
 ## variaveis numéricas
 var_num <- c("ig_inclus_corrigida", "horas_trab_dia","salario_familiar","idade","dias_int_mae_pos_parto","ig_parto","num_filhos_amamentou_todos","media_amament_prev_meses_todos","peso_nasc","uti_t_int_todos","total_t_int","ganho_peso_por_dia","tempo","censura")
 ## variaveis de fator
@@ -64,32 +62,38 @@ var_fct <- setdiff(names(df_geral),var_num) %>% setdiff(var_id)
 df_geral[,var_fct] <- lapply(df_geral[,var_fct], as.factor)
 ## variaveis numéricas
 df_geral[,var_num] <- lapply(df_geral[,var_num],as.integer)
+#####
+df_geral <- df_geral %>% 
+  mutate(horas_trab_dia = ifelse(horas_trab_dia == 0, NA, horas_trab_dia)) %>% 
+  mutate(num_filhos_amamentou_todos=ifelse(num_filhos_amamentou_todos == 99997, NA, num_filhos_amamentou_todos))
 ```
 
-## descritiva dados maternos
+## Análise descritiva dos dados maternos
 
+Análise descritiva dos dados das 177 mães.
 
 ```{r}
-## vetor com nomes dos dados que voltados a mãe
-vet_nao_mae <- c("n_rand", "grupo", "indic_gemelar", "indic_info_ganho_peso", "indic_t", "indic_tempo","filter","sexo","peso_nasc","peso_nasc_2300","uti","uti_t_int_todos","total_t_int", "total_t_int_menor11","ganho_peso_por_dia","ganho_peso_por_dia_menor_igual21")
-vet_mae <- setdiff(names(df_geral), c(vet_nao_mae))
-## duvidas: variaveis "uti",uti_t_int_todos" , "total_t_int", "total_t_int_menor11", são dos filhos, mas necessáriamente se um gêmeo foi internado, o outro também será? eu os retirei
+# separando dados dos bebês dos dados exclusivamente maternos 
+vet_nao_mae <- c("sexo","peso_nasc","uti","uti_t_int_todos","total_t_int","ganho_peso_por_dia","amamen_exclusiva_sn")
+## vetor com nomes dos dados exclusivamente maternos
+vet_mae <- names(df_geral %>% select(-c(vet_nao_mae,var_id)))
 ```
 
-### dados numéricos maternos
+### dados quantitativos
 
-```{r}
+```{r echo=FALSE, results='asis'}
 #dados numéricos
 df_mae_num <- df_geral %>% 
   dplyr::filter(indic_mae==1) %>% 
   dplyr::select(intersect(var_num,vet_mae))
-med_var_mae <- data.frame(media=round(colMeans(df_mae_num, na.rm = TRUE),3), SD=round(sqrt(apply(df_mae_num, 2, var, na.rm = TRUE)),3))
+med_var_mae <- data.frame(media=round(colMeans(df_mae_num, na.rm = TRUE),3), `Desvio Padrão`=round(sqrt(apply(df_mae_num, 2, var, na.rm = TRUE)),3), mediana=apply(df_mae_num, 2, median, na.rm = TRUE))
+
 med_var_mae %>% kbl() %>%kable_styling()
 ```
 
-### dados de fatores maternos 
+### dados qualitativos 
 
-```{r results='asis'}
+```{r echo=FALSE, results='asis'}
 
 df_mae_fator <- df_geral %>% 
   dplyr::filter(indic_mae==1) %>% dplyr::select(c(intersect(vet_mae,var_fct)))
@@ -98,25 +102,31 @@ for (i in names(df_mae_fator)){
   nome_2 <- "frequencia da variavel"
   nome_2 <- paste(nome_2, i)
   var <- df_mae_fator[[i]]
-  a[[i]] <- as.data.frame(table(var)) %>% kable() %>% kable_styling()
+  a[[i]] <- freq(var) %>% kable() %>% kable_styling()
+  print(nome_2)
   print(a[[i]])
 }
 ```
+### Conclusão
+A média das idades das mães foi de 29 anos, sendo que a 80.48% (103 / 128) estudou até o segundo ano do ensino médio, 54.68% (70 / 128) trabalham, a maioria com jornadas de trabalho de 8h por dia, e tem renda familiar mensal de 3,5 salários mínimos. 52.38% (66 / 128) ja haviam sido mães anteriormente, 81.25% (104 / 128) moram com o companheiro, 92.97% (119 / 128) tiveram ajuda para cuidar dos filhos, e 82.03% (105 / 128) não tiveram orientação em relação a amamentação. 62.5% (80 / 128) das gravidezes não foram planejadas, e 16.40% (21 / 128) das gravidezes não foram desejadas (a notícia da gravidez não foi algo positivo para a mãe). 80.46 % (103 / 128) dos partos foram feitos por cesarea, e 9.38% (12 / 128) apresentaram dificuldades em relação ao parto. 56.25% (72 / 128) tiveram dificuldade para amamentar, sendo que 17.97% (23 / 128) sentiram dor ao amamentar.
 
-## descritiva bebê
 
-### dados numéricos bebês
+## Análise descritiva dos dados dos recém-nascidos
 
-```{r}
+Análise descritiva dos dados dos 254 recém-nascidos.
+
+### Análise descritiva dos dados quantitativos
+
+```{r echo=FALSE, results='asis'}
 df_mae_num <- df_geral %>% 
   dplyr::select(intersect(var_num,vet_nao_mae))
-med_var_mae <- data.frame(media=colMeans(df_mae_num, na.rm = TRUE), variancia=apply(df_mae_num, 2, var, na.rm = TRUE))
+med_var_mae <- data.frame(media=round(colMeans(df_mae_num, na.rm = TRUE),3), `Desvio Padrão`=round(sqrt(apply(df_mae_num, 2, var, na.rm = TRUE)),3), mediana=apply(df_mae_num, 2, median, na.rm = TRUE))
 med_var_mae %>% kbl() %>%kable_styling()
 ```
 
-### dados de fatores bebês
+### Análise descritiva dos dados qualitativos
 
-```{r results='asis'}
+```{r echo=FALSE, results='asis'}
 df_mae_fator <- df_geral %>%
   dplyr::select(c(intersect(vet_nao_mae,var_fct)))
 a <- list()
@@ -124,48 +134,58 @@ for (i in names(df_mae_fator)){
   nome_2 <- "frequencia da variavel"
   nome_2 <- paste(nome_2, i)
   var <- df_mae_fator[[i]]
-  a[[i]] <- as.data.frame(table(var)) %>% kable() %>% kable_styling()
+  a[[i]] <- freq(var) %>% kable() %>% kable_styling()
+  print(nome_2)
   print(a[[i]])
 }
 ```
 
+### conclusão
+
+A média do peso dos bebês for de 2299.110 gramas, e a média de ganho de peso diário foi de 22.84 gramas por dia. 55.51% (141 / 254) dos bebês são do sexo feminino,  16.53% tiveram que ficar na uti, e 83.07 (211 / 254) nunca tiveram amamentação exclusiva.
+
 # Análise de sobrevivência
+
+Separação da base para termos apenas as variáveis fazem sentido serem análisadas quanto a sua influencia em relação a curva de sobrevivência.
+
 ```{r}
-# separando variaveis de fator por numero de fatores 
-## estava encontrando alguns problemas, então dividi as variáveis em relação ao número de fatores 
-fatores_3 <- c("religiao_catolica_sn","salario_familiar_cat","mamilos","escolaridade_cat")
-fatores_4 <- c("idade_faixa_et")
-fatores_2 <- c(setdiff(intersect(names(df_geral),var_fct), union(fatores_3, fatores_4)))
+# criando base de dados com apenas variaveis de interesse, que fazem sentido influenciarem a introdução alimentar precoce 
+df[,var_num] <- lapply(df[,var_num],as.integer)
+df <- df %>% select("tempo","censura","ig_inclus_corrigida_35","religiao_sn","trabalha_sn","horas_trab_menor_igual7","salario_familiar_2cat","idade_menor26", "mora_com_compan","orien_amam_prev","gravid_plan","gravid_desej","complic_relac_parto","dias_int_mae_pos_parto_menor_igual3","ig_parto_36","ajuda_para_cuidar","dificuldade_para_amamentar", "dor_amamentar","media_amament_prev_12","sexo","peso_nasc_2300","uti", "total_t_int_menor11","ganho_peso_por_dia_menor_igual21","amament_prev_sn","retorno_trabalho")
 
 ```
 
-## para variáveis com 2 fatores
+## teste logrank
 
-### Tabela com todas variaveis com diferença significânte entre as curvas(pvalor), pelo teste de logrank, com seus respectivos pvalores ao lado 
+Criação de uma tabela geral com o valor p do teste de logrank entre as curvas de sobrevivência para todas as variaveis.
 
 ```{r}
 #df_geral$censura <- as.numeric(df_geral$censura)
 v_imp <- list()
 v_imp_nome <- list()
 lr_df <- as.data.frame(list()) %>%  mutate(variavel=NA,valor_p=NA)
-for (i in names(df_geral %>% select(fatores_2))){
-  lrv<- survdiff(Surv(df_geral$tempo,df_geral$censura)~df_geral[[i]])
-  if (lrv$pvalue<0.05){
-    v_imp_nome[i] <- i
-    v_imp[i] <- lrv
-    lr_df <- rbind(lr_df, data.frame(variavel = i, valor_p = round(lrv$pvalue,3)))    
-    }
+for (i in (names(df %>% select(-c(tempo,censura))))){
+  lrv<- survdiff(Surv(df$tempo,df$censura)~df[[i]])
+  v_imp_nome[i] <- i
+  v_imp[i] <- lrv
+  lr_df <- rbind(lr_df, data.frame(variavel = i, valor_p = round(lrv$pvalue,3)))    
+    
 }
-lr_df %>% kbl() %>% kable_styling()
+p_valor_menor_0.05<- c("orien_amam_prev", "ig_parto_36", "ajuda_para_cuidar", "dificuldade_para_amamentar", "dor_amamentar", "media_amament_prev_12", "peso_nasc_2300", "total_t_int_menor11", "ganho_peso_por_dia_menor_igual21", "retorno_trabalho")
+
+lr_df %>%  kbl() %>% kable_styling()
 ```
+De acordo com o teste de logrank, os fatores que influenciaram a curva de sobrevivência negativamente (induzem a introdução alimentar precoce) foram se a mulher teve orientação sobre amamentação previamente(inesperado), se a idade gestacional foi menor ou igual a 36, se a mulher não teve ajuda para cuidar, se a mulher teve dor ao amamentar, se a média de amamentação prévia for menor que 12, se o peso do bebê foi menor que 2300 gramas, se o tempo de internação total foi maior ou igual a 11 dias, se o ganho de peso por dia foi menor ou igual a 21 gramas por dia(o gráfico também indical alta correlação), o não retorno ao trabalho (inesperado).
 
-### curvas de kaplan-meier de cada variavel que apresentou pvalor significativo
+## Gráfico das curvas de kaplan-meier 
 
-```{r eval=FALSE, include=FALSE, results='asis'}
+```{r}
 ekm <- list()
 for (i in names(v_imp_nome)){
-  ekm[[i]] <- survfit(Surv(df_geral$tempo,df_geral$censura)~df_geral[[i]])
-  plot <- autoplot(ekm[[i]],main = paste("curva de Kaplan-Meier para ",i),surv.connect=F)
+  ekm[[i]] <- survfit(Surv(df$tempo,df$censura)~df[[i]])
+  plot <- autoplot(ekm[[i]],main = paste("curva de Kaplan-Meier para a variavel ",i),surv.connect=F)
   print(plot)
 }
 ```
+
+
