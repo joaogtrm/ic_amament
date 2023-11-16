@@ -1,41 +1,45 @@
 ---
-  title: "ic_amamentação"
+  title: "Análise Descritiva e Análise de sobrevivência de dados de amamentação"
   output: 
   html_document:
   date: "2023-10-19"
 ---
   
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(warning = F, message = F)
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	echo=FALSE
+)
 ```
 
-Esse documento apresentará uma análise descritiva, dos dados de 177 mães de gêmeos, e seus filhos, assim como a comparação de curvas de kaplan-Meier em relação ao tempo desde o nascimento até o início da introdução alimentar,com o limite de 180 dias, que é até quando a alimentação de um recém-nascido deve constituir apenas de leite materno.
+# Motivação
+Segundo recomendações da Organização Mundial da Saúde (OMS), do Ministério da Saúde (MS) e da Sociedade Brasileira de Pediatria (SBP), entre outras organizações de saúde, a introdução alimentar deve ser iniciada no sexto mês de vida do bebê. Quando iniciada de modo precoce, o recém-nascido pode desenvolver problemas de saúde, por não ter o intestino desenvolvido o suficiente, como desnutrição e, em casos mais severos, infecção alimentar, o que pode levar a morte. Ainda em relação à introdução alimentar precoce, O Brasil se destaca negativamente. Segundo pesquisa do ENANI( Estudo nacional de Alimentação e Nutrição infantil), menos da metade (45,7%) dos bebês menores de seis meses se alimentam exclusivamente de leite materno.
 
-# Carregamento da base e limpeza 
+Dito isso, uma análise sobre o porquê da introdução alimentar precoce ser tão abundante no Brasil se faz necessária.
 
-Importação da base de dados diretamente do meu github, assim como a limpeza, que envolve classificação correta das variáveis, e remoção de variaveis que não são de interesse. 
+# Definição do estudo
+O foco desse estudo será identificar os principais fatores que causam a introdução alimentar precoce em gêmeos. A base de dados que será usada foi coletada pelo Hospital Universitário da Universidade de São Paulo (HU/USP), contando com informações tanto das mães, quanto dos recém-nascidos.
 
-## carregamento das bibliotecas
+Esse relatório inicial será focado em uma Análise Descritiva desses dados, assim como uma análise de sobrevivência de primeira mão, para identificar propriamente as variáveis que influenciam a interrupção amamentação exclusiva dos recém-nascidos.
 
+# Análise descritiva
 ```{r, warning=F, message=F}
+# carregamento das bibliotecas
 library(tidyverse)    ### coleção de pacotes
 library(janitor)      ### manipular variaveis
 library(haven)        ### ler o pacote .sav    
 library(labelled)     ### obter o dicionário das variaveis  
 library(ggplot2)      ### construção de gráficos 
 library(survival)     ### análise de sobrevivência
-#library(corrr)        ### talvez
 library(ggfortify)    ### talvez
 library(summarytools) ### talvez
 library(knitr)        ### aparência de tabelas
 library(kableExtra)   ### aparência de tabelas
 library(RCurl)        ### importar base do github
 library(survminer)
-```
 
 ## Carregamento, limpeza da base, e criação do dicionário
-
-```{r include=FALSE}
 # importação da base de dados+clean_names()
 link <- ("https://github.com/joaogtrm/ic_amament/raw/main/dados-amamentacao.sav")
 df <- read_sav(link) 
@@ -44,7 +48,10 @@ df <- df %>%
   dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
   dplyr::filter(!is.na(censura)==TRUE) %>% 
   dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) %>% 
-  as_factor()
+  as_factor() %>%  
+  mutate(horas_trab_dia = ifelse(horas_trab_dia == 0, NA, horas_trab_dia)) %>% 
+  mutate(num_filhos_amamentou_todos=ifelse(num_filhos_amamentou_todos == 99997, NA, num_filhos_amamentou_todos)) %>%
+  mutate(salario_familiar = ifelse(salario_familiar == 0, NA, salario_familiar))
 # remoção de variáveis "parecidas", t1,t2,t3, e filter
 df_geral <- df %>% select(-c("ig_inclus_corrigida_35","horas_trab_menor_igual7","horas_trab_menor_7","salario_familiar_cat","salario_familiar_2cat","idade_menor26","idade_menor_igual26","idade_faixa_et","dias_int_mae_pos_parto_menor_igual3","dias_int_mae_pos_parto_menor3","ig_parto_36","ig_parto_37","media_amament_prev_12","peso_nasc_2300","total_t_int_menor11","ganho_peso_por_dia_menor_igual21",c("t1_amamen_exclusiva_sn","t2_amamen_exclusiva_sn","t3_amamen_exclusiva_sn","t1_retorno_ao_trabalho","t2_retorno_trabalho","t3_retorno_trabalho","filter", "indic_t", "indic_tempo","indic_info_ganho_peso"))) 
 ## gerando dicionário
@@ -52,47 +59,48 @@ dicionario <- df_geral %>%
   labelled::generate_dictionary()
 # separando vetores por tipos 
 ## variaveis de identificação
-var_id <- c("n_rand", "grupo", "indic_gemelar", "indic_mae")
+var_id <- c("n_rand", "grupo", "indic_gemelar", "indic_mae","tempo","censura")
 ## variaveis numéricas
-var_num <- c("ig_inclus_corrigida", "horas_trab_dia","salario_familiar","idade","dias_int_mae_pos_parto","ig_parto","num_filhos_amamentou_todos","media_amament_prev_meses_todos","peso_nasc","uti_t_int_todos","total_t_int","ganho_peso_por_dia","tempo","censura")
+var_num <- c("ig_inclus_corrigida", "horas_trab_dia","salario_familiar","idade","dias_int_mae_pos_parto","ig_parto","num_filhos_amamentou_todos","media_amament_prev_meses_todos","peso_nasc","uti_t_int_todos","total_t_int","ganho_peso_por_dia")
 ## variaveis de fator
-var_fct <- setdiff(names(df_geral),var_num) %>% setdiff(var_id)
+var_fct <- setdiff(setdiff(names(df_geral),var_id),var_num)
 # mudando classe das variaveis 
 ## variaveis de fator 
 df_geral[,var_fct] <- lapply(df_geral[,var_fct], as.factor)
 ## variaveis numéricas
 df_geral[,var_num] <- lapply(df_geral[,var_num],as.integer)
-#####
-df_geral <- df_geral %>% 
-  mutate(horas_trab_dia = ifelse(horas_trab_dia == 0, NA, horas_trab_dia)) %>% 
-  mutate(num_filhos_amamentou_todos=ifelse(num_filhos_amamentou_todos == 99997, NA, num_filhos_amamentou_todos))
-```
-
-## Análise descritiva dos dados maternos
-
-Análise descritiva dos dados das 177 mães.
-
-```{r}
+#####Análise descritiva dos dados das 177 mães.
 # separando dados dos bebês dos dados exclusivamente maternos 
 vet_nao_mae <- c("sexo","peso_nasc","uti","uti_t_int_todos","total_t_int","ganho_peso_por_dia","amamen_exclusiva_sn")
 ## vetor com nomes dos dados exclusivamente maternos
 vet_mae <- names(df_geral %>% select(-c(vet_nao_mae,var_id)))
 ```
+Para a análise descritiva, os dados, e assim sendo, as análises também, serão divididos em dois grupos, estes sendo “dados maternos” e “dados de recém nascidos”. As análises serão dividas entre:
 
-### dados quantitativos
+  1)Dados numéricos(quantitativos): Uma tabela com média, desvio padrão, mediana, valores mínimos e máximos.
 
+  2)Dados não-numéricos(qualitativos): Uma sequência de tabelas para variáveis não-numéricas.
+
+  3)Conclusão: associação entre dados numéricos e não-numéricos. 
+
+**Obs:** A informação sobre o tempo até a introdução alimentar de dois recém nascidos foram perdidas durante a pesquisa, então foi escolhido remover os dados referente a essas duas observações
+
+## Análise descritiva dos dados maternos
+### Dados numéricos
 ```{r echo=FALSE, results='asis'}
 #dados numéricos
 df_mae_num <- df_geral %>% 
   dplyr::filter(indic_mae==1) %>% 
   dplyr::select(intersect(var_num,vet_mae))
-med_var_mae <- data.frame(media=round(colMeans(df_mae_num, na.rm = TRUE),3), `Desvio Padrão`=round(sqrt(apply(df_mae_num, 2, var, na.rm = TRUE)),3), mediana=apply(df_mae_num, 2, median, na.rm = TRUE))
+min <-summarise_all(df_mae_num, function(x) min(x, na.rm = TRUE))
+min <- unlist(min[1, , drop = FALSE])
+max <-summarise_all(df_mae_num, function(x) max(x, na.rm = TRUE))
+max <- unlist(max[1, , drop = FALSE])
 
+med_var_mae <- data.frame(Média=round(colMeans(df_mae_num, na.rm = TRUE),3), `Desvi_Padrão`=round(sqrt(apply(df_mae_num, 2, var, na.rm = TRUE)),3), Mediana=apply(df_mae_num, 2, median, na.rm = TRUE), Min.=min, Max. = max)
 med_var_mae %>% kbl() %>%kable_styling()
 ```
-
-### dados qualitativos 
-
+### Dados não-numéricos
 ```{r echo=FALSE, results='asis'}
 
 df_mae_fator <- df_geral %>% 
@@ -102,88 +110,93 @@ for (i in names(df_mae_fator)){
   nome_2 <- "frequencia da variavel"
   nome_2 <- paste(nome_2, i)
   var <- df_mae_fator[[i]]
-  a[[i]] <- freq(var) %>% kable() %>% kable_styling()
-  print(nome_2)
+  a[[i]] <- freq(var)[,-c(3,5)] %>% kable(digits = 1,caption = i) %>% kable_classic(full_width = FALSE)
   print(a[[i]])
 }
 ```
 ### Conclusão
-A média das idades das mães foi de 29 anos, sendo que a 80.48% (103 / 128) estudou até o segundo ano do ensino médio, 54.68% (70 / 128) trabalham, a maioria com jornadas de trabalho de 8h por dia, e tem renda familiar mensal de 3,5 salários mínimos. 52.38% (66 / 128) ja haviam sido mães anteriormente, 81.25% (104 / 128) moram com o companheiro, 92.97% (119 / 128) tiveram ajuda para cuidar dos filhos, e 82.03% (105 / 128) não tiveram orientação em relação a amamentação. 62.5% (80 / 128) das gravidezes não foram planejadas, e 16.40% (21 / 128) das gravidezes não foram desejadas (a notícia da gravidez não foi algo positivo para a mãe). 80.46 % (103 / 128) dos partos foram feitos por cesarea, e 9.38% (12 / 128) apresentaram dificuldades em relação ao parto. 56.25% (72 / 128) tiveram dificuldade para amamentar, sendo que 17.97% (23 / 128) sentiram dor ao amamentar.
-
-
-## Análise descritiva dos dados dos recém-nascidos
-
-Análise descritiva dos dados dos 254 recém-nascidos.
-
-### Análise descritiva dos dados quantitativos
-
+Um total de 128 mães estão fazendo parte da pesquisa. A média das idades das mães foi de 29 anos, sendo que a 80,48% (103 / 128) estudou até o segundo ano do ensino médio, 54,68% (70 / 128) trabalham, a maioria com jornadas de trabalho de 8h por dia, com renda familiar mensal de 3,5 salários mínimos. 52,38% (66 / 128) já haviam sido mães anteriormente, 81,25% (104 / 128) moram com o companheiro, 92,97% (119 / 128) tiveram ajuda para cuidar dos filhos, e 82,03% (105 / 128) não tiveram orientação em relação à amamentação. 62,5% (80 / 128) das gravidezes não foram planejadas, e 16,40% (21 / 128) das gravidezes não foram desejadas (a notícia da gravidez não foi algo positivo para a mãe). 80,46% (103 / 128) dos partos foram feitos por cesárea, e 9,38% (12 / 128) apresentaram dificuldades em relação ao parto. 56,25% (72 / 128) tiveram dificuldade para amamentar, sendo que 17,97% (23 / 128) sentiram dor ao amamentar.
+## Análise descritiva dos dados de recém-nascidos
+### Dados numéricos
 ```{r echo=FALSE, results='asis'}
-df_mae_num <- df_geral %>% 
+df_bebe_num <- df_geral %>% 
   dplyr::select(intersect(var_num,vet_nao_mae))
-med_var_mae <- data.frame(media=round(colMeans(df_mae_num, na.rm = TRUE),3), `Desvio Padrão`=round(sqrt(apply(df_mae_num, 2, var, na.rm = TRUE)),3), mediana=apply(df_mae_num, 2, median, na.rm = TRUE))
-med_var_mae %>% kbl() %>%kable_styling()
+med_var_bebe <- data.frame(media=round(colMeans(df_bebe_num, na.rm = TRUE),3), `Desvio Padrão`=round(sqrt(apply(df_bebe_num, 2, var, na.rm = TRUE)),3), mediana=apply(df_bebe_num, 2, median, na.rm = TRUE))
+med_var_bebe %>% kbl() %>%kable_styling()
 ```
-
-### Análise descritiva dos dados qualitativos
-
+### Dados não-numéricos
 ```{r echo=FALSE, results='asis'}
-df_mae_fator <- df_geral %>%
+df_bebe_fator <- df_geral %>%
   dplyr::select(c(intersect(vet_nao_mae,var_fct)))
 a <- list()
-for (i in names(df_mae_fator)){
+for (i in names(df_bebe_fator)){
   nome_2 <- "frequencia da variavel"
   nome_2 <- paste(nome_2, i)
-  var <- df_mae_fator[[i]]
-  a[[i]] <- freq(var) %>% kable() %>% kable_styling()
-  print(nome_2)
+  var <- df_bebe_fator[[i]]
+  a[[i]] <- freq(var)[,-c(3,5)] %>% kable(digits = 1,caption = i) %>% kable_classic(full_width = FALSE)
   print(a[[i]])
 }
 ```
-
 ### conclusão
-
-A média do peso dos bebês for de 2299.110 gramas, e a média de ganho de peso diário foi de 22.84 gramas por dia. 55.51% (141 / 254) dos bebês são do sexo feminino,  16.53% tiveram que ficar na uti, e 83.07 (211 / 254) nunca tiveram amamentação exclusiva.
-
+Um total de 254 recém-nascidos estão fazendo parte da pesquisa. A média do peso dos bebês é 2299,110 gramas, e a média de ganho de peso diário é 22,84 gramas por dia. 55,51% (141 / 254) dos bebês são do sexo feminino,  16,53% tiveram que ficar na UTI, e 83,07 (211 / 254) nunca tiveram amamentação exclusiva.
 # Análise de sobrevivência
-
-Separação da base para termos apenas as variáveis fazem sentido serem análisadas quanto a sua influencia em relação a curva de sobrevivência.
-
+O foco dessa etapa será estudar o tempo até o desmame dos recém-nascidos. Para isso, será usado o estimador de Kaplan-Meier para obter as curvas de sobrevivência, já que a base de dados apresenta dados censurados. Após isso, será utilizado o teste de log-rank para comparação das curvas em relação aos seus grupos. O Resultado serão gráficos com a curva de sobrevida para cada valor da variável, assim como seu limite superior e inferior(representado por linhas pontilhadas).
 ```{r}
-# criando base de dados com apenas variaveis de interesse, que fazem sentido influenciarem a introdução alimentar precoce 
-df[,var_num] <- lapply(df[,var_num],as.integer)
-df <- df %>% select("tempo","censura","ig_inclus_corrigida_35","religiao_sn","trabalha_sn","horas_trab_menor_igual7","salario_familiar_2cat","idade_menor26", "mora_com_compan","orien_amam_prev","gravid_plan","gravid_desej","complic_relac_parto","dias_int_mae_pos_parto_menor_igual3","ig_parto_36","ajuda_para_cuidar","dificuldade_para_amamentar", "dor_amamentar","media_amament_prev_12","sexo","peso_nasc_2300","uti", "total_t_int_menor11","ganho_peso_por_dia_menor_igual21","amament_prev_sn","retorno_trabalho")
+######Separação da base para termos apenas as variáveis fazem sentido serem análisadas quanto a sua influencia em relação a curva de sobrevivência.
 
-```
-
-## teste logrank
-
-Criação de uma tabela geral com o valor p do teste de logrank entre as curvas de sobrevivência para todas as variaveis.
-
-```{r}
-#df_geral$censura <- as.numeric(df_geral$censura)
+# criando base de dados com apenas variaveis de interesse(fatores), que fazem sentido influenciarem a introdução alimentar precoce 
+dfas <- df %>% select("tempo","censura","ig_inclus_corrigida_35","religiao_sn","religiao_catolica_sn","para_sn","trabalha_sn","horas_trab_menor_igual7","salario_familiar_2cat","salario_familiar_cat","idade_menor26","idade_faixa_et", "mora_com_compan","af_ca_mama","orien_amam_prev","mamilos","gravid_plan","gravid_desej","tipo_parto","complic_relac_parto","escolaridade_cat","dias_int_mae_pos_parto_menor_igual3","ig_parto_36","ajuda_para_cuidar","dificuldade_para_amamentar", "dor_amamentar","media_amament_prev_12","sexo","peso_nasc_2300","uti", "total_t_int_menor11","ganho_peso_por_dia_menor_igual21","amament_prev_sn","retorno_trabalho")
+dfas[] <- lapply(dfas[],as.factor)
+dfas[,c("tempo","censura")] <- lapply(dfas[,c("tempo","censura")],as.integer)
+#########
+#Criação de uma tabela geral com o valor p do teste de logrank entre as curvas de sobrevivência para todas as variaveis.
+########
 v_imp <- list()
 v_imp_nome <- list()
+p_valor_menor_0.05 <- list()
 lr_df <- as.data.frame(list()) %>%  mutate(variavel=NA,valor_p=NA)
-for (i in (names(df %>% select(-c(tempo,censura))))){
-  lrv<- survdiff(Surv(df$tempo,df$censura)~df[[i]])
+for (i in (names(dfas %>% select(-c(tempo,censura))))){
+  lrv<- survdiff(Surv(dfas$tempo,dfas$censura)~df[[i]])
   v_imp_nome[i] <- i
   v_imp[i] <- lrv
-  lr_df <- rbind(lr_df, data.frame(variavel = i, valor_p = round(lrv$pvalue,3)))    
-    
+  lr_df <- rbind(lr_df, data.frame(variavel = i, valor_p = round(lrv$pvalue,3))) 
+  if ((lrv$pvalue<0.05)==T){p_valor_menor_0.05[[i]] <- lrv$pvalue}
 }
-p_valor_menor_0.05<- c("orien_amam_prev", "ig_parto_36", "ajuda_para_cuidar", "dificuldade_para_amamentar", "dor_amamentar", "media_amament_prev_12", "peso_nasc_2300", "total_t_int_menor11", "ganho_peso_por_dia_menor_igual21", "retorno_trabalho")
 
-lr_df %>%  kbl() %>% kable_styling()
-```
-De acordo com o teste de logrank, os fatores que influenciaram a curva de sobrevivência negativamente (induzem a introdução alimentar precoce) foram se a mulher teve orientação sobre amamentação previamente(inesperado), se a idade gestacional foi menor ou igual a 36, se a mulher não teve ajuda para cuidar, se a mulher teve dor ao amamentar, se a média de amamentação prévia for menor que 12, se o peso do bebê foi menor que 2300 gramas, se o tempo de internação total foi maior ou igual a 11 dias, se o ganho de peso por dia foi menor ou igual a 21 gramas por dia(o gráfico também indical alta correlação), o não retorno ao trabalho (inesperado).
-
-## Gráfico das curvas de kaplan-meier 
-
-```{r}
+#################
+#Gráfico das curvas de kaplan-meier e print deles e da tabela
+##########
 ekm <- list()
-for (i in names(v_imp_nome)){
-  ekm[[i]] <- survfit(Surv(df$tempo,df$censura)~df[[i]])
-  plot <- autoplot(ekm[[i]],main = paste("curva de Kaplan-Meier para a variavel ",i),surv.connect=F)
+for (i in names(p_valor_menor_0.05[])) {
+#for (i in v_imp_nome) {  
+  ekm[[i]] <- survfit(Surv(dfas$tempo,dfas$censura)~dfas[[i]])
+  plot <- ggsurvplot(ekm[[i]], data = dfas,
+           pval = TRUE, conf.int=TRUE, conf.int.style = "step",
+           ylab = "Sobrevida", xlab = "tempo em dias",legend.title = i, surv.median.line = "hv")  
   print(plot)
 }
+lr_df %>% arrange(valor_p) %>%  kbl() %>% kable_styling()
 ```
+Será considerado uma diferença estatisticamente significante entre as curvas de sobrevivência entre grupos das variáveis quando o P-valor dos testes for menor ou igual a 0,05. Lembrando que, quanto maior a curva de sobrevivência, melhor é para o recém-nascido, pois nos diz que ele teve mais tempo de amamentação exclusiva. Dito isso, os valores que apresentaram impacto **negativo**, ou seja, fatores que estimularam a introdução alimentar precoce foram:
+  
+  1) A orientação prévia em relação à amamentação: [contraditório] É estranho que as mães que não obteve orientação ao amamentar teve uma curva de sobrevivência maior do que quem teve orientação. Isso cria dúvidas em relação a que tipo de orientação essas mães receberam. 
+  
+  2) Idade gestacional do parto menor que 36 semanas.
+  
+  3) Mãe sem ajuda para cuidar dos filhos.
+  
+  4) Presença de dificuldade para amamentar.
+  
+  5) Ausência de dor ao amamentar.[contraditório]
+  
+  6) Mães com menos de 12 meses de amamentação prévia.
+  
+  7) Recém-nascidos com peso menor que 2,300 gramas logo após o parto.
+  
+  8) Recém-nascidos que foram internados 11 vezes ou mais.
+  
+  9) Recém-nascido com ganho de peso maior que 21 gramas por dia.[contraditório] 
+  
+  10) O não retorno das mães ao trabalho.[contraditório]
+  
+  * Apesar da variável "mamilos" ter presentado valor-p significativo, ela não será considerada, pois haviam apenas quatro mães com mamilos diferentes de "normais", ou seja, o resultado pode ser altamente influenciado por esses 4 valores.
