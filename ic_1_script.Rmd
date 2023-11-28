@@ -8,9 +8,7 @@ output:
 knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
-  echo=FALSE, 
-  include=T
-)
+  echo=FALSE)
 ```
 ```{r}
 # carregamento das bibliotecas
@@ -54,22 +52,27 @@ Durante o estudo, 2 dos participantes não compareceram à entrevista pós-natal
 Portanto, o tamanho da amostra utilizado foi de 254 recém nascidos gêmeos que foram amamentados por suas 128 mães.
   
 As seguintes características foram consideradas
-Em relação a mãe:
-  1) Características Gerais:idade, escolaridade, religião, salário familiar, se está trabalhando no momento, quantas horas trabalha por dia, se mora com companheiro, se tem câncer de mama. 
-  2) Em relação a gravidez: é o primeiro parto(paridade), se já amamentou anteriormente (e quando começou a introdução alimentar), se a gravidez foi planejada, se a gravidez foi desejada, quantos dias a mãe ficou internada no pós-parto, se houve complicações no pós-parto, se a mãe sente dor ao amamentar, tipo de parto (cesárea ou vaginal), idade gestacional do parto, se teve ajuda durante a gravidez e no pós-parto, se houve dificuldade para amamentar, se a amamentação ainda era exclusiva (sem introdução alimentar) no tempo 3, 
 
-características do recém-nascido :
+Características da mãe:
+
+  1) Características Gerais: idade, escolaridade, religião, salário familiar, se está trabalhando no momento, quantas horas trabalha por dia, se mora com companheiro, se tem câncer de mama. 
+  
+  2) Obstetrícia: é o primeiro parto(paridade), se já amamentou anteriormente (e quando começou a introdução alimentar), se a gravidez foi planejada, se a gravidez foi desejada, quantos dias a mãe ficou internada no pós-parto, se houve complicações no pós-parto, se a mãe sente dor ao amamentar, tipo de parto (cesárea ou vaginal), idade gestacional do parto, se teve ajuda durante a gravidez e no pós-parto, se houve dificuldade para amamentar, se a amamentação ainda era exclusiva (sem introdução alimentar) no tempo 3.
+
+Características do recém-nascido:
+
   1) Gerais: sexo, peso logo após o parto, média do ganho de peso diário. 
-  2)Em relação a obstetrícia:se o recém-nascido precisou ir para a uti, quanto tempo o recém-nascido ficou na uti, se houve orientação prévia em relação à amamentação, se já retornou ao trabalho, tempo em que houve começou a introdução alimentar e se existe censura nesse tempo.
+  
+  2) Obstetrícia: se o recém-nascido precisou ir para a uti, quanto tempo o recém-nascido ficou na uti, se houve orientação prévia em relação à amamentação, se já retornou ao trabalho, tempo em que houve começou a introdução alimentar e se existe censura nesse tempo.
 
 # Análise descritiva
 
-A base conta com 254 observações e 30 variáveis, com 538 dados faltantes. Na base de dados existem variáveis relacionadas ao recém-nascido, as mães, e também às relacionadas ao período da gravidez (variáveis neonatais). Olhando cada grupo de variáveis de forma separada:
+A base conta com 254 observações e 30 variáveis de interesse, com 538 dados faltantes. Na base de dados existem variáveis relacionadas ao recém-nascido, as mães, e também às relacionadas ao período da gravidez (variáveis neonatais). Olhando cada grupo de variáveis de forma separada:
 
 
 Em relação aos recém-nascidos, apenas 16.93% (43 / 254) foram exclusivamente amamentados durante todo o período da pesquisa. A média (desvio padrão) do peso no nascimento foi de 2299.110 (464.536) gramas, enquanto a média (desvio padrão) de ganho de peso diário foi de 23.337 (9.811) gramas por dia, e 16.53% (42/254) tiveram que ficar na UTI.
 
-Em relação às mães, a média (desvio padrão) das idades das mães foi de 28.87 (5.99) anos, sendo que a 80.48% (103 / 128) estudou até o segundo ano do ensino médio, 54.68% (70 / 128) trabalham, sendo que a metade, 50% (64 / 128), tem jornada de trabalho de 8h por dia e salário familiar de 3.22 salários mínimos, além de que 20.31$ (26/128) ja voltaram a trabalhar nos primeiros 180 dias pós-parto. 81.25% (104 / 128) moram com o companheiro, e 92.97% (119 / 128) tiveram ajuda para cuidar dos filhos. 12.5% (16/128) tem câncer de mama.
+Em relação às mães, a média (desvio padrão) das idades das mães foi de 28.87 (5.99) anos, sendo que a 80.48% (103 / 128) estudou até o segundo ano do ensino médio, 54.68% (70 / 128) trabalham, sendo que a metade, 50% (64 / 128), tem jornada de trabalho de 8h por dia e salário familiar de 3.22 salários mínimos, além de que 20.31$ (26/128) já voltaram a trabalhar nos primeiros 180 dias pós-parto. 81.25% (104 / 128) moram com o companheiro, e 92.97% (119 / 128) tiveram ajuda para cuidar dos filhos. 12.5% (16/128) tem câncer de mama.
 
 A média (desvio padrão) das idades gestacional do parto foi de 36.060 (1.67), 82.03% (105 / 128) não tiveram orientação em relação à amamentação. 62.5% (80 / 128) das gravidezes não foram planejadas, e 16.40% (21 / 128) das gravidezes não foram desejadas (a notícia da gravidez não foi algo positivo para a mãe). 80.46% (103 / 128) dos partos foram feitos por cesárea, e 9.38% (12 / 128) apresentaram complicações em relação ao parto. 56.25% (72 / 128) tiveram dificuldade para amamentar, sendo que 17.97% (23 / 128) sentiram dor ao amamentar. Mais da metade das mulheres, 54.69% (70 / 128), já haviam sido mães anteriormente.
 
@@ -80,13 +83,12 @@ A análise será feita considerando o evento de interesse como a introdução al
 
 Uma primeira análise será feita utilizado o estimador kaplan-Meier para estimar a curva de sobrevivência. Este estimador é interessante, pois ele carrega a informação de que a censura de uma observação implica que ela não falhou (ou seja, o evento de interesse não ocorreu) até aquele momento. 
 
-O foco então será analisar as curvas de kaplan meier para diferentes grupos de uma mesma variável,a fim de encontrar variáveis com impacto significativo no tempo até a introdução alimentar dos recém-nascidos. 
+O foco então será analisar as curvas de kaplan meier para diferentes grupos de uma mesma variável, a fim de encontrar variáveis com impacto significativo no tempo até a introdução alimentar dos recém-nascidos. 
 
-No caso das variáveis numéricas, elas foram separadas em grupos, para assim ser possível de comparas as curvas de sobrevivência. As variáveis numéricas consideradas, e seus novos valores, se encontram abaixo:   
+No caso das variáveis numéricas, elas foram separadas em grupos, para assim ser possível de comparar as curvas de sobrevivência. As variáveis numéricas consideradas, e seus novos valores, se encontram abaixo:   
 ```{r}
 par(mfrow=c(2,2))
 plot_bar <- list()
-i <- "idade_menor26"
 dat <- df
 fil <- "censura"
      plot_bar[["idade_menor26"]] <- ggplot(data = dat, aes(x = dat[["idade_menor26"]], fill = as.factor(dat[[fil]]))) +
@@ -104,10 +106,6 @@ fil <- "censura"
    
 ```
 ```{r}
-
-i <- "salario_familiar_2cat"
-dat <- df
-fil <- "censura"
      plot_bar[["salario_familiar_2cat"]] <- ggplot(data = dat, aes(x = dat[["salario_familiar_2cat"]], fill = as.factor(dat[[fil]]))) +
        geom_bar(position = position_fill()) +
               scale_fill_manual(name = "Censura",
@@ -123,11 +121,6 @@ fil <- "censura"
    
 ```
 ```{r}
-
-
-i <- "horas_trab_menor_igual7"
-dat <- df
-fil <- "censura"
      plot_bar[["horas_trab_menor_igual7"]] <- ggplot(data = dat, aes(x = dat[["horas_trab_menor_igual7"]], fill = as.factor(dat[[fil]]))) +
        geom_bar(position = position_fill()) +
               scale_fill_manual(name = "Censura",
@@ -144,9 +137,6 @@ fil <- "censura"
 
 ```
 ```{r}
-i <- "media_amament_prev_12"
-dat <- df
-fil <- "censura"
      plot_bar[["media_amament_prev_12"]] <- ggplot(data = dat, aes(x = dat[["media_amament_prev_12"]], fill = as.factor(dat[[fil]]))) +
        geom_bar(position = position_fill())+
                        scale_fill_manual(name = "Censura",
@@ -163,10 +153,6 @@ fil <- "censura"
      
 ```
 ```{r}
-
-i <- "dias_int_mae_pos_parto_menor_igual3"
-dat <- df
-fil <- "censura"
      plot_bar[["dias_int_mae_pos_parto_menor_igual3"]] <- ggplot(data = dat, aes(x = dat[["dias_int_mae_pos_parto_menor_igual3"]], fill = as.factor(dat[[fil]]))) +
        geom_bar(position = position_fill()) +
               scale_fill_manual(name = "Censura",
@@ -184,10 +170,6 @@ fil <- "censura"
       
 ```
 ```{r}
-
-i <- "ig_parto_36"
-dat <- df
-fil <- "censura"
      plot_bar[["ig_parto_36"]] <- ggplot(data = dat, aes(x = dat[["ig_parto_36"]], fill = as.factor(dat[[fil]]))) +
        geom_bar(position = position_fill()) +
               scale_fill_manual(name = "Censura",
@@ -205,10 +187,6 @@ fil <- "censura"
      
 ```
 ```{r}
-
-i <- "peso_nasc_2300"
-dat <- df
-fil <- "censura"
      plot_bar[["peso_nasc_2300"]] <- ggplot(data = dat, aes(x = dat[["peso_nasc_2300"]], fill = as.factor(dat[[fil]]))) +
        geom_bar(position = position_fill()) +
               scale_fill_manual(name = "Censura",
@@ -226,9 +204,6 @@ fil <- "censura"
 ```
 ```{r}
 
-i <- "total_t_int_menor11"
-dat <- df
-fil <- "censura"
      plot_bar[["total_t_int_menor11"]] <- ggplot(data = dat, aes(x = dat[["total_t_int_menor11"]], fill = as.factor(dat[[fil]]))) +
        geom_bar(position = position_fill()) +
               scale_fill_manual(name = "Censura",
@@ -319,7 +294,8 @@ for (i in names(v_imp)) {
 }
 plot_geral
 ```
-Note que existe um valor P em cada gráfico, ele representa o P-valor do teste de log-rank, um teste de hipótese em que a hipótese nula é que as curvas de sobrevivência de cada grupo são iguais, e a hipótese alternativa é que existe diferença entre as curvas de sobrevivência dos grupos. Para um nível de confiança de 95%, um P-valor de 0.05 é adotado, ou seja, quando o P-valor for menor ou igual a 0.05, significa que as curvas de sobrevivência de cada grupo são diferentes, apontando que aquela variável impacta no tempo em que começa a introdução alimentar.
+
+Note que existe um P-valor em cada gráfico. Ele vem do teste de log-rank, um teste de hipótese em que a hipótese nula é que as curvas de sobrevivência de cada grupo tem distribuição igual, e a hipótese alternativa é que existe diferença entre as curvas de sobrevivência dos grupos. Para um nível de confiança de 95%, um P-valor de 0.05 é adotado, ou seja, quando o P-valor for menor ou igual a 0.05, a hipótese alternativa é considerada, implicando que as curvas de sobrevivência de cada grupo são diferentes, apontando que aquela variável tem influência no tempo em que começa a introdução alimentar.
 
 As curvas de sobrevivência em que os testes de log rank tiveram P-valor menor ou igual a 0.05 se encontram a seguir:
 ```{r include=FALSE}
@@ -392,17 +368,27 @@ plot_kp
 # Conclusão
 
 De acordo com teste de log-rank, podemos afirmar que os seguintes fatores são agravantes para as mães iniciarem a introdução alimentar precocemente:
-  1)Ter menos de 26 anos.
-  2)Ter começado a introdução alimentar precoce com outros filhos anteriormente.
-  3)Não ter ajuda durante o parto e para cuidar do recém-nascido.
-  4)Ter dificuldade para amamentar.
-  5)O recém-nascido ter menos de 2300 gramas.
-  6)O recém-nascido ter ficado internado por 11 dias ou mais.
-  7)Ter orientação em relação a amamentação antes do parto.
-  8)Não sentir dor ao amamentar.
-  9)Voltar ao trabalho.
-  10)O recém-nascido ganhar 21 gramas ou menos de peso por dia.
-
+  
+  1) Ter menos de 26 anos.
+   
+  2) Ter começado a introdução alimentar precoce com outros filhos anteriormente.
+   
+  3) Não ter ajuda durante o parto e para cuidar do recém-nascido.
+   
+  4) Ter dificuldade para amamentar.
+   
+  5) O recém-nascido ter menos de 2300 gramas.
+   
+  6) O recém-nascido ter ficado internado por 11 dias ou mais.
+   
+  7) Ter orientação em relação à amamentação antes do parto.
+   
+  8) Não sentir dor ao amamentar.
+   
+  9) Voltar ao trabalho.
+  
+  10) O recém-nascido ganhar 21 gramas ou menos de peso por dia.
+ 
 
 
 
