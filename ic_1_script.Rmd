@@ -63,7 +63,7 @@ Características do recém-nascido:
 
   1) Gerais: sexo, peso no nascimento, média do ganho de peso diário. 
   
-  2) Obstetrícia: se o recém-nascido precisou ir para a uti, quanto tempo o recém-nascido ficou na uti, se houve orientação prévia em relação à amamentação, se já retornou ao trabalho, tempo em que houve começou a introdução alimentar e se existe censura nesse tempo.
+  2) Obstetrícia: se o recém-nascido precisou ir para a UTI, quanto tempo o recém-nascido ficou na UTI, se houve orientação prévia em relação à amamentação, se já retornou ao trabalho, tempo em que houve começou a introdução alimentar e se existe censura nesse tempo.
 
 # Análise descritiva
 
@@ -212,7 +212,7 @@ fil <- "censura"
                  stat = "count",
                  colour = "black",
                  position = position_fill(vjust = 0.5)) +
-       ggtitle("Número de dias do recém-nascido na uti ") +
+       ggtitle("Número de dias do recém-nascido na UTI ") +
   xlab("") +  # Add x-axis label
   ylab("") +  # Add y-axis label
   theme(plot.title = element_text(hjust = 0.5))
@@ -244,7 +244,7 @@ var_kp_consid <- c(
   "dificuldade_para_amamentar", # dificuldade para amamentar
   "amamen_exclusiva_sn", # amamentou exclusivamente?
   "peso_nasc_2300", #peso do recém nascido
-  "uti", #se o recém-nascido ficou na uti ou não (sim nao)
+  "UTI", #se o recém-nascido ficou na UTI ou não (sim nao)
   "total_t_int_menor11", # total de dias DO RECÉM NASCIDO no hospital
   "orien_amam_prev", # orientação prévia sobre amamentação
   "sexo", # sexo do recém-nascido
