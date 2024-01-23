@@ -1,14 +1,15 @@
 ---
-title: "ANÁLISE EXPLORATÓRIA E DE CURVAS KAPLAN-MEIER"
+title: "ANÁLISE DESCRITIVA E DE CURVAS KAPLAN-MEIER"
 output: 
   html_document: default
 ---
   
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(
-  message = FALSE,
-  warning = FALSE,
-  echo=FALSE)
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
 ```
 ```{r}
 # carregamento das bibliotecas
@@ -25,11 +26,12 @@ library(kableExtra)   ### aparência de tabelas
 library(RCurl)        ### importar base do github
 library(survminer)
 library(DataExplorer) ### para analise descritiva
+library(esquisse)
 ```
 # Descrição da base de dados
 ```{r}
 ## Carregamento, limpeza da base, e criação do dicionário
-# importação da base de dados+clean_names()
+## importação da base de dados+clean_names()
 link <- ("https://github.com/joaogtrm/ic_amament/raw/main/dados-amamentacao.sav")
 df <- read_sav(link) 
 df <- df %>% 
@@ -37,193 +39,210 @@ df <- df %>%
   dplyr::filter(!is.na(tempo_vida_ate_parada_amament_ate180)==TRUE) %>% 
   dplyr::filter(!is.na(censura)==TRUE) %>% 
   dplyr::rename(tempo=tempo_vida_ate_parada_amament_ate180) %>% 
-  haven::as_factor() %>%  
+  haven::as_factor()
+
+## mudança nos valores de algumas variáveis 
+df <- df %>% 
   dplyr::mutate(horas_trab_dia = ifelse(horas_trab_dia == 0, NA, horas_trab_dia)) %>% 
   dplyr::mutate(num_filhos_amamentou_todos=ifelse(num_filhos_amamentou_todos == 99997, NA, num_filhos_amamentou_todos)) %>%
   dplyr::mutate(salario_familiar = ifelse(salario_familiar == 0, NA, salario_familiar)) %>% 
-  mutate(num_filhos_amamentou_todos_menor_igual2=ifelse(num_filhos_amamentou_todos <= 2, "sim", "nao"))
-
+  mutate(num_filhos_amamentou_todos_menor_igual2=ifelse(num_filhos_amamentou_todos <= 2, "sim", "nao")) %>% 
+  mutate(t2_retorno_trabalho = ifelse(t2_retorno_trabalho == 9999, NA, t2_retorno_trabalho)) %>%
+  mutate(t3_retorno_trabalho = ifelse(t3_retorno_trabalho == "", NA, t3_retorno_trabalho)) %>% 
+  mutate(t2_retorno_trabalho = ifelse(t2_retorno_trabalho == "", NA, t2_retorno_trabalho))
 ```
 
-A base de dados foi obtida para outro estudo, por meio de um ensaio clínico randômico promovido pela Universitário da Universidade de São Paulo (HU/USP). O ensaio acompanhou 171 gestantes grávidas de gêmeos, desde o início da gravidez(com 18 a 34 semanas de gestação) até 6 meses depois do parto. Os dados em relação à amamentação foram obtidos mediante entrevistas ocorridas em três momentos pós-parto: 30 a 40 dias (Tempo 1), 90 dias(Tempo 2), e 180 dias(Tempo 3). Também, 43 participantes não tinham informações sobre amamentação durante o período pós-natal, portanto foram excluídos. 
+A base de dados foi obtida para outro estudo, por meio de um ensaio clínico randômico promovido pelo Hospital Universitário da Universidade de São Paulo (HU/USP). O ensaio acompanhou 171 gestantes grávidas de gêmeos, desde o início da gravidez(com 18 a 34 semanas de gestação) até 6 meses depois do parto. Os dados em relação à amamentação foram obtidos mediante entrevistas ocorridas em três momentos pós-parto: 30 a 40 dias (Tempo 1), 90 dias(Tempo 2), e 180 dias(Tempo 3). Também, 43 participantes não tinham informações sobre amamentação durante o período pós-natal, portanto foram excluídos. 
 
 Durante o estudo, 2 dos participantes não compareceram à entrevista pós-natal no Tempo 2 (90 dias), e 2 participantes não compareceram à entrevista pós-natal no Tempo 3 (180 dias). Os dados desses participantes foram censurados nos Tempos 2 e 3, respectivamente. Além disso, dois gêmeos faleceram durante o período do estudo e foram considerados perdidos para o acompanhamento. 
 
 Portanto, o tamanho da amostra utilizado foi de 254 recém nascidos gêmeos que foram amamentados por suas 128 mães.
-  
-As seguintes características foram consideradas
 
-Características da mãe:
+```{r}
+variaveis_citadas <- c(
+  "idade",
+  "escolaridade_cat",                       
+  "religiao_sn",                       
+  "para_sn",                                
+  "trabalha_sn",
+  "horas_trab_dia",
+  "salario_familiar",                       
+  "mora_com_compan",                        
+  "af_ca_mama",   
+  "num_filhos_amamentou_todos",             
+  "media_amament_prev_meses_todos",         
+  "gravid_plan",                            
+  "gravid_desej",
+  "ig_parto",
+  "amamen_exclusiva_sn",                    
+  "ajuda_para_cuidar",                      
+  "dificuldade_para_amamentar",             
+  "tempo",                                  
+  "censura",
+  "dor_amamentar",                          
+  "peso_nasc", 
+  "tipo_parto",                             
+  "sexo",                                   
+  "uti_t_int_todos",                        
+  "dias_int_mae_pos_parto",                 
+  "complic_relac_parto",                    
+  "ganho_peso_por_dia",                     
+  "uti",                                    
+  "orien_amam_prev",                        
+  "retorno_trabalho",
+  NA)
 
-  1) Características Gerais: idade, escolaridade, religião, salário familiar, se está trabalhando no momento, quantas horas trabalha por dia, se mora com companheiro, se tem câncer de mama. 
-  
-  2) Obstetrícia: é o primeiro parto(paridade), se já amamentou anteriormente (e quando começou a introdução alimentar), se a gravidez foi planejada, se a gravidez foi desejada, quantos dias a mãe ficou internada no pós-parto, se houve complicações no pós-parto, se a mãe sente dor ao amamentar, tipo de parto (cesárea ou vaginal), idade gestacional do parto, se teve ajuda durante a gravidez e no pós-parto, se houve dificuldade para amamentar, se a amamentação ainda era exclusiva (sem introdução alimentar) no tempo 3.
+tabela_variaveis <- c(
+  "idade da mãe",
+  "escolaridade ",                       
+  "Se tem religião",                       
+  "Se é o primeiro parto",                                
+  "Se trabalha",
+  "Carga horária diária de trabalho",
+  "Salario familiar",                       
+  "Se mora com o companheiro",                        
+  "Se tem câncer de mama",   
+  "Quantos filhos amamentou préviamente",             
+  "Média do tempo em que amamentou anteriormente",         
+  "Se a gravidez foi planejada",                            
+  "Se a gravidez foi desejada",
+  "Idade gestacional do parto",
+  "Se a amamentação foi exclusiva",                    
+  "Se teve ajuda para cuidar dos filhos",                      
+  "Se teve dificuldade para amamentar",             
+  "Com quantos dias de vida começou a introdução alimentar",                                  
+  "Se o Tempo teve censura ou não",
+  "Se sentiu dor ao amamentar",                          
+  "Peso do recém-nascido", 
+  "Tipo de parto",                             
+  "Sexo do recém-nascido",                                   
+  "uti_t_int_todos",                        
+  "dias_int_mae_pos_parto",                 
+  "Se teve complicações relacionadas ao parto",                    
+  "Média do ganho de peso diário do recém-nascido",                     
+  "uti",                                    
+  "Se teve orientação prévia em relação a amamentação",                        
+  "Se retornou ao trabalho",
+  NA)
+```
 
-Características do recém-nascido:
+```{r}
+#### variaveis novo df
+variaveis_antigas_id <- c(
+  "n_rand",
+  "grupo",
+  "indic_gemelar",
+  "indic_mae",
+  "indic_info_ganho_peso",
+  "indic_t",
+  "indic_tempo"
+)
 
-  1) Gerais: sexo, peso no nascimento, média do ganho de peso diário. 
-  
-  2) Obstetrícia: se o recém-nascido precisou ir para a UTI, quanto tempo o recém-nascido ficou na UTI, se houve orientação prévia em relação à amamentação, se já retornou ao trabalho, tempo em que houve começou a introdução alimentar e se existe censura nesse tempo.
+variaveis_antigas_modelagem <- c(
+  "religiao_sn",
+  "para_sn",
+  "trabalha_sn",
+  "mora_com_compan",
+  "af_ca_mama",
+  "orien_amam_prev",
+  "gravid_plan",
+  "gravid_desej",
+  "tipo_parto",
+  "complic_relac_parto",
+  "ajuda_para_cuidar",
+  "dificuldade_para_amamentar",
+  "dor_amamentar",
+  "sexo",
+  "uti",
+  "amament_prev_sn",
+  "t1_amamen_exclusiva_sn",
+  "t2_amamen_exclusiva_sn",
+  "t3_amamen_exclusiva_sn",
+  "amamen_exclusiva_sn",
+  "censura",
+  "tempo",
+  "t1_retorno_ao_trabalho",
+  "t2_retorno_trabalho",
+  "t3_retorno_trabalho",
+  "retorno_trabalho",
+  "filter"
+)
+
+variaveis_antigas_sem_ajustes <- c(
+  "horas_trab_dia",
+  "salario_familiar",
+  "idade",
+  "dias_int_mae_pos_parto",
+  "ig_parto",
+  "escolaridade_cat",
+  "num_filhos_amamentou_todos",
+  "media_amament_prev_meses_todos",
+  "peso_nasc",
+  "uti_t_int_todos",
+  "total_t_int",
+  "ganho_peso_por_dia",
+  "mamilos",
+  "religiao_catolica_sn"
+)
+#### variaveis "descartadas"
+variaveis_antigas_ignoradas <- c(
+  "ig_inclus_corrigida",
+  "ig_inclus_corrigida_35"
+)
+
+variaveis_antigas_ignoradas_ajustadas <- c(
+  "horas_trab_menor_igual7",
+  "horas_trab_menor_7",
+  "salario_familiar_cat",
+  "salario_familiar_2cat",
+  "idade_menor26",
+  "idade_menor_igual26",
+  "idade_faixa_et",
+  "dias_int_mae_pos_parto_menor_igual3",
+  "dias_int_mae_pos_parto_menor3",
+  "ig_parto_36",
+  "ig_parto_37",
+  "media_amament_prev_12",
+  "peso_nasc_2300",
+  "total_t_int_menor11",
+  "ganho_peso_por_dia_menor_igual21",
+  "num_filhos_amamentou_todos_menor_igual2"
+)
+variaveis_antigas <- c(variaveis_antigas_id,
+                       variaveis_antigas_modelagem,
+                       variaveis_antigas_sem_ajustes,
+                       variaveis_antigas_ignoradas,
+                       variaveis_antigas_ignoradas_ajustadas)
+
+```
 
 # Análise descritiva
 
-A base conta com 254 observações e 30 variáveis de interesse, com 538 dados faltantes. Na base de dados existem variáveis relacionadas ao recém-nascido, as mães, e também às relacionadas ao período da gravidez (variáveis neonatais). Olhando cada grupo de variáveis de forma separada:
 
+A base conta com 254 observações e 30 variáveis de interesse, com 538 dados faltantes. As variáveis foram dividas em quatro grupos:
 
-Em relação aos recém-nascidos, apenas 16.93% (43 / 254) foram exclusivamente amamentados durante todo o período da pesquisa. A média (desvio padrão) do peso no nascimento foi de 2299.110 (464.536) gramas, enquanto a média (desvio padrão) de ganho de peso diário foi de 23.337 (9.811) gramas por dia, e 16.53% (42/254) tiveram que ficar na UTI.
+1)    Maternas: idade materna, escolaridade, religião, se está empregada, salário familiar, caraga horária de trabalho(em horas por dia), estado civil, se tem câncer de mama e se ja retornou ao emprego
 
-Em relação às mães, a média (desvio padrão) das idades das mães foi de 28.87 (5.99) anos, sendo que a 80.48% (103 / 128) estudou até o segundo ano do ensino médio, 54.68% (70 / 128) trabalham, sendo que a metade, 50% (64 / 128), tem jornada de trabalho de 8h por dia e salário familiar de 3.22 salários-mínimos, além de que 20.31% (26/128) já voltaram a trabalhar nos primeiros 180 dias pós-parto. 81.25% (104 / 128) moram com o companheiro, e 92.97% (119 / 128) tiveram ajuda para cuidar dos filhos. 12.5% (16/128) tem câncer de mama.
+2)    Obstétricas e neonatáis: Paridade, quantos filhos amamentou anteriormente, e média do tempo até a parada total da amamentação , se a gravidez foi planejada, se a gravidez foi desejada, quanto tempo a mãe ficou no hospital, se houve complicações envolvendo a mãe no pósparto, tipo de parto, idade gestacional no parto, se teve suporte no pós parto, peso do recém-nascido no nascimento, se o recém-nascido ficou internado na UTI, depois de quanto tempo o recém-nascido deixou o hospital, sexo do recém-nascido, ganho de peso diário do recém nascido(média), sexo do recém-nascido
 
-A média (desvio padrão) das idades gestacional do parto foi de 36.060 (1.67), 82.03% (105 / 128) não tiveram orientação em relação à amamentação. 62.5% (80 / 128) das gravidezes não foram planejadas, e 16.40% (21 / 128) das gravidezes não foram desejadas (a notícia da gravidez não foi algo positivo para a mãe). 80.46% (103 / 128) dos partos foram feitos por cesárea, e 9.38% (12 / 128) apresentaram complicações em relação ao parto. 56.25% (72 / 128) tiveram dificuldade para amamentar, sendo que 17.97% (23 / 128) sentiram dor ao amamentar. Mais da metade das mulheres, 54.69% (70 / 128), já haviam sido mães anteriormente.
+4)    Relacionadas a amamentação: Se teve dificuldade para amamentar, se amamentou exclusivamente, se teve orientação em relação a amamentação, se sentiu dor ao amamentar
 
+  1) Em relação aos recém-nascidos, apenas 16.93% (43 / 254) foram exclusivamente amamentados durante todo o período da pesquisa. A média (desvio padrão) do peso no nascimento foi de 2299.110 (464.536) gramas, enquanto a média (desvio padrão) de ganho de peso diário foi de 23.337 (9.811) gramas por dia, e 16.53% (42/254) tiveram que ficar na UTI.
+
+  2) Em relação às mães, a média (desvio padrão) das idades foi de 28.87 (5.99) anos, sendo que 80.48% (103 / 128) estudou até o segundo ano do ensino médio, 54.68% (70 / 128) trabalham, sendo que a metade, 50% (64 / 128), tem jornada de trabalho de 8h por dia e salário familiar de 3.22 salários mínimos, além de que 20.31% (26/128) já voltaram a trabalhar nos primeiros 180 dias pós-parto. 81.25% (104 / 128) moram com o companheiro, 92.97% (119 / 128) tiveram ajuda para cuidar dos filhos e 12.5% (16/128) tem câncer de mama.
+
+  3) Em relação aos dados neonatais, a média (desvio padrão) das idades gestacional do parto foi de 36.060 (1.67), 82.03% (105 / 128) não tiveram orientação em relação à amamentação. 62.5% (80 / 128) das gravidezes não foram planejadas, e 16.40% (21 / 128) das gravidezes não foram desejadas (a notícia da gravidez não foi algo positivo para a mãe). 80.46% (103 / 128) dos partos foram feitos por cesárea, e 9.38% (12 / 128) apresentaram complicações em relação ao parto. 56.25% (72 / 128) tiveram dificuldade para amamentar, sendo que 17.97% (23 / 128) sentiram dor ao amamentar. Mais da metade das mulheres, 54.69% (70 / 128), já haviam sido mães anteriormente.
 
 # Análise de sobrevivência (Kaplan-meier)
 
 A análise será feita considerando o evento de interesse como a introdução alimentar antes dos 180 dias de vida. 
 
-Uma primeira análise será feita utilizado o estimador kaplan-Meier para estimar a curva de sobrevivência. Este estimador é interessante, pois ele carrega a informação de que a censura de uma observação implica que ela não falhou (ou seja, o evento de interesse não ocorreu) até aquele momento. 
+Uma primeira análise será feita utilizado o estimador kaplan-Meier para estimar a curva de sobrevivência, representação gráfica que mostra a probabilidade de um indivíduo sobreviver(no caso do estudo, de não ter começado a introdução alimentar) ao longo do tempo. O estimador kaplan-Meier é interessante, pois ele carrega a informação de que a censura de uma observação implica que ela não falhou (ou seja, o evento de interesse não ocorreu) até aquele momento. 
 
 O foco então será analisar as curvas de kaplan meier para diferentes grupos de uma mesma variável, a fim de encontrar variáveis com impacto significativo no tempo até a introdução alimentar dos recém-nascidos. 
 
-No caso das variáveis numéricas, elas foram separadas em grupos, para assim ser possível de comparar as curvas de sobrevivência. As variáveis numéricas consideradas, e seus novos valores, se encontram abaixo:   
-```{r}
-par(mfrow=c(2,2))
-plot_bar <- list()
-dat <- df
-fil <- "censura"
-     plot_bar[["idade_menor26"]] <- ggplot(data = dat, aes(x = dat[["idade_menor26"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill()) + 
-       scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Idade da mãe") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-   
-```
-```{r}
-     plot_bar[["salario_familiar_2cat"]] <- ggplot(data = dat, aes(x = dat[["salario_familiar_2cat"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill()) +
-              scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Renda familiar") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-   
-```
-```{r}
-     plot_bar[["horas_trab_menor_igual7"]] <- ggplot(data = dat, aes(x = dat[["horas_trab_menor_igual7"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill()) +
-              scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Carga horária diária de trabalho") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-
-```
-```{r}
-     plot_bar[["media_amament_prev_12"]] <- ggplot(data = dat, aes(x = dat[["media_amament_prev_12"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill())+
-                       scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Duração média das amamentações anteriores(até a introdução alimentar)") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-     
-```
-```{r}
-     plot_bar[["dias_int_mae_pos_parto_menor_igual3"]] <- ggplot(data = dat, aes(x = dat[["dias_int_mae_pos_parto_menor_igual3"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill()) +
-              scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Dias em que a mãe ficou internada no pós-parto") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-
-      
-```
-```{r}
-     plot_bar[["ig_parto_36"]] <- ggplot(data = dat, aes(x = dat[["ig_parto_36"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill()) +
-              scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Tempo de gestação") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-
-     
-```
-```{r}
-     plot_bar[["peso_nasc_2300"]] <- ggplot(data = dat, aes(x = dat[["peso_nasc_2300"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill()) +
-              scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Peso ao nascer") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-
-```
-```{r}
-
-     plot_bar[["total_t_int_menor11"]] <- ggplot(data = dat, aes(x = dat[["total_t_int_menor11"]], fill = as.factor(dat[[fil]]))) +
-       geom_bar(position = position_fill()) +
-              scale_fill_manual(name = "Censura",
-                    values = c("0" = "#68E4C3", "1" = "#E95656"))+
-       geom_text(aes(label = after_stat(count)),
-                 stat = "count",
-                 colour = "black",
-                 position = position_fill(vjust = 0.5)) +
-       ggtitle("Número de dias do recém-nascido na UTI ") +
-  xlab("") +  # Add x-axis label
-  ylab("") +  # Add y-axis label
-  theme(plot.title = element_text(hjust = 0.5))
-     
-```
-```{r echo=FALSE, figures-side, fig.show="hold", out.width="50%"}
-par(mfrow=c(2,2))
-plot_bar
-```
-```{r echo=FALSE}
-var_kp_consid <- c(
+```{r eval=FALSE, include=FALSE}
+nomes_codigo_antigo <- c(
   "idade_menor_igual26", # idade
   "escolaridade_cat", # escolaridade
   "religiao_sn", # religiao
@@ -244,7 +263,7 @@ var_kp_consid <- c(
   "dificuldade_para_amamentar", # dificuldade para amamentar
   "amamen_exclusiva_sn", # amamentou exclusivamente?
   "peso_nasc_2300", #peso do recém nascido
-  "UTI", #se o recém-nascido ficou na UTI ou não (sim nao)
+  "uti", #se o recém-nascido ficou na uti ou não (sim nao)
   "total_t_int_menor11", # total de dias DO RECÉM NASCIDO no hospital
   "orien_amam_prev", # orientação prévia sobre amamentação
   "sexo", # sexo do recém-nascido
@@ -260,6 +279,9 @@ var_kp_consid <- c(
   "ganho_peso_por_dia_menor_igual21" # ganho peso diário
   
 )
+```
+
+```{r echo=FALSE}
 
 ################################################################################
 dfas <- df %>% select(var_kp_consid) %>% select(-amamen_exclusiva_sn)
@@ -281,7 +303,9 @@ for (i in (names(dfas %>% select(-c(tempo,censura))))){
   
 }
 ```
+
 Agora, as curvas de sobrevivência serão estimadas para cada variável, usando o estimador Kaplan-meier.
+
 ```{r echo=FALSE, fig.show="hold", out.width="50%"}
 ekm <- list()
 plot_geral <- list()
@@ -369,12 +393,15 @@ plot_kp
 
 De acordo com teste de log-rank, podemos afirmar que os seguintes fatores são agravantes para as mães iniciarem a introdução alimentar precocemente:
   
-  1) Ter menos de 26 anos.
+  1) Mãe com idade inferior a 26 anos.
    
-  2) Ter começado a introdução alimentar precoce com outros filhos anteriormente.
+  2) Ter começado a introdução alimentar precocemente (antes de 12 semanas) em amamentações prévias.
+  
+  X) Idade Gestacional igual ou inferior a 36 semanas 
    
-  3) Não ter ajuda durante o parto e para cuidar do recém-nascido.
    
+  3) Não ter ajuda durante o parto e/ou para cuidar do recém-nascido.
+  
   4) Ter dificuldade para amamentar.
    
   5) O recém-nascido ter menos de 2300 gramas.
@@ -385,7 +412,7 @@ De acordo com teste de log-rank, podemos afirmar que os seguintes fatores são a
    
   8) Não sentir dor ao amamentar.
    
-  9) Voltar ao trabalho.
+  9) Não retornou ao ao trabalho.
   
   10) O recém-nascido ganhar 21 gramas ou menos de peso por dia.
  
